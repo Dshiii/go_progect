@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><title>Админ</title></head>
+<body>
+{{ template "userbar.html" . }}
+<h1>Администрирование</h1>
+<p><a href="/">Документы</a> | <a href="/wiki">Wiki</a> | <a href="/kanban">Канбан</a> | <a href="/admin">Админ</a></p>
+<p><a href="/documents/create">+ Создать документ</a></p>
+<p><a href="/requests/create">+ Заявка на доступ</a></p>
+
+{{ if .RoleChanges }}
+<h2>Массовые изменения ролей</h2>
+{{ range .RoleChanges }}
+  <div class="role-change" data-delay="{{ .ConfirmDelaySec }}"
+       data-role-id="{{ .RoleID }}" data-count="{{ .UserCount }}"
+       style="border:1px solid #c00; padding:10px; margin-bottom:10px;">
+    <p>
+      <b>Роль:</b> {{ .RoleName }} (ID {{ .RoleID }})<br>
+      <b>{{ .Description }} {{ .UserCount }} пользователей.</b>
+    </p>
+    <button type="button" class="apply-btn">Применить</button>
+    <button type="button" class="cancel-btn">Отменить</button>
+  </div>
+{{ end }}
+{{ end }}
+
+<h2>Висячие права (не покрыты ролью)</h2>
+{{ if .Orphaned }}
+<table border="1" cellpadding="6">
+<tr><th>Пользователь</th><th>Правило</th><th>Ресурс</th><th>Описание</th><th>Действия</th></tr>
+{{ range .Orphaned }}
+  <tr>
+    <td>{{ .UserName }} ({{ .UserID }})</td>
+    <td>{{ .RuleID }}</td>
+    <td>{{ .Resource }}</td>
+    <td>{{ .Description }}</td>
+    <td>
+      <form method="POST" action="/admin/delete-user-rule" style="display:inline"
+            onsubmit="return confirm('Отозвать прямое право?');">
+        <input type="hidden" name="rule_id" value="{{ .RuleID }}">
+        <button type="submit">Отозвать</button>
+      </form>
+    </td>
+  </tr>
+{{ end }}
+</table>
+{{ else }}<p>Нет.</p>{{ end }}
+
+<h2>Массовые прямые правила</h2>
+{{ if .MassRules }}
+<table border="1" cellpadding="6">
+<tr>
+  <th>Ресурс</th><th>Направление</th><th>Категория</th><th>Исключение</th>
+  <th>Действие</th><th>Пользователей</th><th>Действия</th>
+</tr>
+{{ range .MassRules }}
+  <tr>
+    <td>{{ .ResourceType }}</td>
+    <td>{{ if .DirectionID }}{{ .DirectionID }}{{ else }}—{{ end }}</td>
+    <td>{{ if .CategoryID }}{{ .CategoryID }}{{ else }}—{{ end }}</td>
+    <td>{{ if .ExcludeCategoryID }}{{ .ExcludeCategoryID }}{{ else }}—{{ end }}</td>
+    <td>{{ .Action }}</td>
+    <td>{{ .UserCount }}</td>
+    <td>
+      <form method="POST" action="/admin/promote-mass-rule" style="display:inline"
+            onsubmit="return confirm('Создать роль и переназначить права?');">
+        <input type="hidden" name="resource_type" value="{{ .ResourceType }}">
+        <input type="hidden" name="direction_id" value="{{ if .DirectionID }}{{ .DirectionID }}{{ end }}">
+        <input type="hidden" name="category_id" value="{{ if .CategoryID }}{{ .CategoryID }}{{ end }}">
+        <input type="hidden" name="exclude_category_id" value="{{ if .ExcludeCategoryID }}{{ .ExcludeCategoryID }}{{ end }}">
+        <input type="hidden" name="action" value="{{ .Action }}">
+        <input type="hidden" name="role_name" value="Роль из правила {{ .ResourceType }}/{{ .Action }}">
+        {{ range .UserIDs }}<input type="hidden" name="user_ids" value="{{ . }}">{{ end }}
+        <button type="submit">Создать роль и переназначить</button>
+      </form>
+    </td>
+  </tr>
+{{ end }}
+</table>
+{{ else }}<p>Нет.</p>{{ end }}
+
+<h2>Пользователи и роли</h2>
+<table border="1" cellpadding="6">
+<tr><th>ID</th><th>Имя</th><th>Текущие роли</th><th>Добавить роль</th></tr>
+{{ range .Users }}
+  {{ $u := . }}
+  <tr>
+    <td>{{ $u.ID }}</td>
+    <td>{{ $u.Name }}</td>
+    <td>
+      {{ range .Roles }}
+        <div style="display:inline-block; margin-right:5px;">
+          {{ .Name }} ({{ .ID }})
+          <form method="POST" action="/admin/remove-user-role" style="display:inline"
+                onsubmit="return confirm('Снять роль?');">
+            <input type="hidden" name="user_id" value="{{ $u.ID }}">
+            <input type="hidden" name="role_id" value="{{ .ID }}">
+            <button type="submit" title="Снять роль">×</button>
+          </form>
+        </div>
+      {{ else }}
+        <i>нет ролей</i>
+      {{ end }}
+    </td>
+    <td>
+      <form method="POST" action="/admin/add-user-role">
+        <input type="hidden" name="user_id" value="{{ $u.ID }}">
+        <select name="role_id" onchange="this.form.submit()">
+          <option value="">+ Выбрать роль</option>
+          <option value="1">Аналитик</option>
+          <option value="2">Аналитик закупок</option>
+          <option value="3">Лидер проекта</option>
+          <option value="4">Администратор</option>
+        </select>
+      </form>
+    </td>
+  </tr>
+{{ end }}
+</table>
+
+<h2>Заявки на доступ</h2>
+{{ if .Requests }}
+<table border="1" cellpadding="6">
+<tr><th>ID</th><th>Кому</th><th>Ресурс</th><th>Действие</th><th>Статус</th><th>Действия</th></tr>
+{{ range .Requests }}
+  <tr>
+    <td>{{ .ID }}</td>
+    <td>{{ .SubjectUserID }}</td>
+    <td>{{ .ResourceType }}</td>
+    <td>{{ .Action }}</td>
+    <td>{{ .Status }}</td>
+    <td>
+      {{ if eq .Status "pending" }}
+        <form method="POST" action="/requests/approve" style="display:inline">
+          <input type="hidden" name="request_id" value="{{ .ID }}">
+          <button type="submit">Согласовать</button>
+        </form>
+        <form method="POST" action="/requests/reject" style="display:inline">
+          <input type="hidden" name="request_id" value="{{ .ID }}">
+          <button type="submit">Отклонить</button>
+        </form>
+      {{ else if eq .Status "approved" }}
+        <form method="POST" action="/requests/issue" style="display:inline">
+          <input type="hidden" name="request_id" value="{{ .ID }}">
+          <button type="submit">Выдать</button>
+        </form>
+      {{ end }}
+    </td>
+  </tr>
+{{ end }}
+</table>
+{{ else }}<p>Нет заявок.</p>{{ end }}
+
+<script>
+document.querySelectorAll('.role-change').forEach(function(box) {
+  var applyBtn = box.querySelector('.apply-btn');
+  var cancelBtn = box.querySelector('.cancel-btn');
+  var delay = parseInt(box.dataset.delay, 10) || 5;
+  var count = box.dataset.count || '?';
+  var armed = false;
+  var armedAt = 0;
+  var timer = null;
+
+  applyBtn.onclick = function() {
+    if (!armed) {
+      if (!confirm('Изменение затронет ' + count + ' пользователей. Продолжить?')) {
+        return;
+      }
+      armed = true;
+      armedAt = Date.now();
+      applyBtn.disabled = true;
+      var left = delay;
+      applyBtn.textContent = 'Подтвердить (через ' + left + ' c)';
+      timer = setInterval(function() {
+        left -= 1;
+        if (left > 0) {
+          applyBtn.textContent = 'Подтвердить (через ' + left + ' c)';
+        } else {
+          clearInterval(timer);
+          armedAt = 0;
+          applyBtn.disabled = false;
+          applyBtn.textContent = 'Подтвердить';
+        }
+      }, 1000);
+      return;
+    }
+    if (Date.now() - armedAt < delay * 1000) {
+      return;
+    }
+    clearInterval(timer);
+    applyRoleChange(box);
+  };
+
+  cancelBtn.onclick = function() {
+    clearInterval(timer);
+    cancelRoleChange(box);
+  };
+});
+
+function applyRoleChange(box) {
+  var params = new URLSearchParams({ role_id: box.dataset.roleId });
+  fetch('/admin/apply-role-change', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: params.toString()
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    alert('Применено. Затронуто: ' + data.affected);
+    location.reload();
+  })
+  .catch(function() { alert('Ошибка'); });
+}
+
+function cancelRoleChange(box) {
+  var params = new URLSearchParams({ role_id: box.dataset.roleId });
+  fetch('/admin/cancel-role-change', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: params.toString()
+  })
+  .then(function(r) {
+    if (!r.ok) { throw new Error('fail'); }
+    return r.json();
+  })
+  .then(function(data) {
+    alert('Отменено. Восстановлено: ' + data.restored);
+    location.reload();
+  })
+  .catch(function() { alert('Ошибка отмены'); });
+}
+</script>
+</body></html>
