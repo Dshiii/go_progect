@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><title>Создать документ</title></head>
+<body>
+{{ template "userbar.html" . }}
+<h1>Создать документ</h1>
+<p><a href="/kanban">← Назад</a></p>
+<form method="POST">
+  <p>Название: <input name="title" required></p>
+
+  <p>Область:
+    <select name="scope" id="scope" onchange="syncFields()" required>
+      {{ range .Scopes }}
+        <option value="d{{ .DirectionID }}-c{{ .CategoryID }}"
+                data-dir="{{ .DirectionID }}"
+                data-cat="{{ .CategoryID }}"
+                data-excl="{{ .ExcludeCategoryID }}">{{ .Label }}</option>
+      {{ end }}
+    </select>
+  </p>
+
+  <input type="hidden" name="direction" id="direction">
+  <input type="hidden" name="category" id="category">
+
+  <button type="submit">Создать</button>
+</form>
+
+<script>
+function syncFields() {
+  const sel = document.getElementById('scope');
+  if (!sel || !sel.options.length) return;
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('direction').value = opt.getAttribute('data-dir');
+  document.getElementById('category').value = opt.getAttribute('data-cat');
+}
+syncFields();
+</script>
+</body></html>

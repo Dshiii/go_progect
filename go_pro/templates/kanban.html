@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><title>Канбан</title></head>
+<body>
+{{ template "userbar.html" . }}
+<h1>Канбан</h1>
+<p>
+  <a href="/">Документы</a> |
+  <a href="/wiki">Wiki</a> |
+  <a href="/kanban">Канбан</a> |
+  <a href="/requests/create?resource=kanban">Запросить доступ</a> |
+  <a href="/admin">Админ</a>
+</p>
+
+<form method="GET" style="margin-bottom:10px;">
+  <input name="q" value="{{ .Query }}" placeholder="Поиск по задачам">
+  <button type="submit">Найти</button>
+</form>
+
+{{ if .Tasks }}
+<table border="1" cellpadding="6">
+  <tr>
+    <th>ID</th>
+    <th>Задача</th>
+    <th>Проект</th>
+    <th>Исполнитель</th>
+    <th>Действия</th>
+  </tr>
+  {{ range .Tasks }}
+    <tr>
+      <td>{{ .ID }}</td>
+      <td>{{ .Title }}</td>
+      <td>{{ .Project }}</td>
+      <td>{{ .Assignee }}</td>
+      <td>
+        <a href="/kanban/update?id={{ .ID }}">Редактировать</a>
+        <form method="POST" action="/kanban/delete" style="display:inline"
+              onsubmit="return confirm('Удалить задачу?');">
+          <input type="hidden" name="id" value="{{ .ID }}">
+          <button type="submit">Удалить</button>
+        </form>
+      </td>
+    </tr>
+  {{ end }}
+</table>
+{{ else }}
+  <p>Нет доступных задач.</p>
+{{ end }}
+</body></html>

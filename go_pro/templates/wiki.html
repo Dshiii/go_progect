@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><title>Wiki</title></head>
+<body>
+{{ template "userbar.html" . }}
+<h1>Wiki</h1>
+<p>
+  <a href="/">Документы</a> |
+  <a href="/wiki">Wiki</a> |
+  <a href="/kanban">Канбан</a> |
+  <a href="/requests/create?resource=wiki">Запросить доступ</a> |
+  <a href="/admin">Админ</a>
+</p>
+
+<p><a href="/wiki/create">+ Создать страницу</a></p>
+
+<form method="GET" style="margin-bottom:10px;">
+  <input name="q" value="{{ .Query }}" placeholder="Поиск по страницам">
+  <button type="submit">Найти</button>
+</form>
+
+{{ if .Pages }}
+<table border="1" cellpadding="6">
+  <tr>
+    <th>ID</th>
+    <th>Заголовок</th>
+    <th>Раздел</th>
+    <th>Действия</th>
+  </tr>
+  {{ range .Pages }}
+    <tr>
+      <td>{{ .ID }}</td>
+      <td>{{ .Title }}</td>
+      <td>{{ .Section }}</td>
+      <td>
+        <a href="/wiki/update?id={{ .ID }}">Редактировать</a>
+        <form method="POST" action="/wiki/delete" style="display:inline"
+              onsubmit="return confirm('Удалить страницу?');">
+          <input type="hidden" name="id" value="{{ .ID }}">
+          <button type="submit">Удалить</button>
+        </form>
+      </td>
+    </tr>
+  {{ end }}
+</table>
+{{ else }}
+  <p>Нет доступных страниц.</p>
+{{ end }}
+</body></html>
